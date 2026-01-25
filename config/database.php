@@ -1,9 +1,9 @@
 <?php
 // Database Configuration
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'school_management');
+define('DB_USER', 'u208951792_skoolydemouser');
+define('DB_PASS', '!mO1cl=bKZ');
+define('DB_NAME', 'u208951792_skooly_demo');
 
 // Create connection
 try {
@@ -20,7 +20,7 @@ try {
 
 // Site Configuration
 define('SITE_NAME', 'Quolytech School Management');
-define('SITE_URL', 'http://localhost/school_management_system');
+define('SITE_URL', 'https://azure-moose-466393.hostingersite.com/');
 define('ADMIN_EMAIL', 'admin@school.com');
 
 // Session Configuration
