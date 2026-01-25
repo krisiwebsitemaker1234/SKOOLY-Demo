@@ -40,7 +40,7 @@
         <li class="sidebar-item">
           <a class="sidebar-link" href="attendance.php">
             <div class="d-flex align-items-center gap-3">
-              <i class="ti ti-calendar-check"></i>
+              <i class="ti ti-calendar"></i>
               <span class="hide-menu">My Attendance</span>
             </div>
           </a>
