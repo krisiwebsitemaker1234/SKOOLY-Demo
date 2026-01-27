@@ -168,7 +168,7 @@ $stats = [
   <link rel="shortcut icon" type="image/png" href="../assets/images/logos/favicon.png" />
   <link rel="stylesheet" href="../assets/css/styles.min.css" />
   <!-- TinyMCE Editor -->
-  <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+  <script src="https://cdn.tiny.cloud/1/wy4a39bl3x8z5x1vw33wh8ip5s51m29evs7obqf5uvrc52w1/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
   <style>
     .newsletter-thumbnail {
       width: 80px;
