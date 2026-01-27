@@ -45,6 +45,15 @@
             </div>
           </a>
         </li>
+
+        <li class="sidebar-item">
+          <a class="sidebar-link" href="classes.php">
+            <div class="d-flex align-items-center gap-3">
+              <i class="ti ti-school"></i>
+              <span class="hide-menu">Classes</span>
+            </div>
+          </a>
+        </li>
         
         <li class="sidebar-item">
           <a class="sidebar-link" href="schedule.php">
