@@ -54,6 +54,15 @@
             </div>
           </a>
         </li>
+
+        <li class="sidebar-item">
+          <a class="sidebar-link" href="newsletters.php">
+            <div class="d-flex align-items-center gap-3">
+              <i class="ti ti-newspaper"></i>
+              <span class="hide-menu">Newsletters</span>
+            </div>
+          </a>
+        </li>
         
         <li class="sidebar-item">
           <a class="sidebar-link" href="schedule.php">

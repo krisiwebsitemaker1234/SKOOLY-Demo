@@ -81,6 +81,15 @@
             </div>
           </a>
         </li>
+
+        <li class="sidebar-item">
+          <a class="sidebar-link" href="manage-newsletters.php">
+            <div class="d-flex align-items-center gap-3">
+              <i class="ti ti-newspaper"></i>
+              <span class="hide-menu">Newsletters</span>
+            </div>
+          </a>
+        </li>
         
         <li class="nav-small-cap">
           <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
