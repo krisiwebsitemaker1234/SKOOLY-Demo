@@ -167,8 +167,10 @@ $stats = [
   <title>Manage Newsletters - <?php echo SITE_NAME; ?></title>
   <link rel="shortcut icon" type="image/png" href="../assets/images/logos/favicon.png" />
   <link rel="stylesheet" href="../assets/css/styles.min.css" />
-  <!-- TinyMCE Editor -->
-  <script src="https://cdn.tiny.cloud/1/wy4a39bl3x8z5x1vw33wh8ip5s51m29evs7obqf5uvrc52w1/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+  
+  <!-- Quill Editor CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+  
   <style>
     .newsletter-thumbnail {
       width: 80px;
@@ -178,6 +180,16 @@ $stats = [
     }
     .status-badge {
       font-size: 11px;
+    }
+    .editor-container {
+      height: 400px;
+      background: white;
+    }
+    .ql-container {
+      font-size: 14px;
+    }
+    .ql-editor {
+      min-height: 350px;
     }
   </style>
 </head>
@@ -386,8 +398,9 @@ $stats = [
   <div class="modal fade" id="addNewsletterModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <form method="POST" enctype="multipart/form-data">
+        <form method="POST" enctype="multipart/form-data" id="addNewsletterForm">
           <input type="hidden" name="action" value="add">
+          <input type="hidden" name="content" id="content_add_hidden">
           
           <div class="modal-header">
             <h5 class="modal-title">Create New Newsletter</h5>
@@ -449,7 +462,7 @@ $stats = [
               
               <div class="col-md-12 mb-3">
                 <label class="form-label">Content <span class="text-danger">*</span></label>
-                <textarea id="content_add" name="content" class="form-control"></textarea>
+                <div id="editor_add" class="editor-container"></div>
               </div>
             </div>
           </div>
@@ -467,9 +480,10 @@ $stats = [
   <div class="modal fade" id="editNewsletterModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <form method="POST" enctype="multipart/form-data">
+        <form method="POST" enctype="multipart/form-data" id="editNewsletterForm">
           <input type="hidden" name="action" value="edit">
           <input type="hidden" name="newsletter_id" id="edit_newsletter_id">
+          <input type="hidden" name="content" id="content_edit_hidden">
           
           <div class="modal-header">
             <h5 class="modal-title">Edit Newsletter</h5>
@@ -531,7 +545,7 @@ $stats = [
               
               <div class="col-md-12 mb-3">
                 <label class="form-label">Content <span class="text-danger">*</span></label>
-                <textarea id="content_edit" name="content" class="form-control"></textarea>
+                <div id="editor_edit" class="editor-container"></div>
               </div>
             </div>
           </div>
@@ -578,19 +592,64 @@ $stats = [
   <script src="../assets/js/app.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
   
+  <!-- Quill Editor JS -->
+  <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+  
   <script>
-    // Initialize TinyMCE for add modal
-    tinymce.init({
-      selector: '#content_add',
-      height: 400,
-      menubar: false,
-      plugins: [
-        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-        'insertdatetime', 'media', 'table', 'help', 'wordcount'
-      ],
-      toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | bullist numlist | link image | preview code',
-      content_style: 'body { font-family: Arial, sans-serif; font-size: 14px }'
+    // Initialize Quill editor for add modal
+    let quillAdd = new Quill('#editor_add', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+          [{ 'font': [] }],
+          [{ 'size': ['small', false, 'large', 'huge'] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'script': 'sub'}, { 'script': 'super' }],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'indent': '-1'}, { 'indent': '+1' }],
+          [{ 'align': [] }],
+          ['link', 'image', 'video'],
+          ['blockquote', 'code-block'],
+          ['clean']
+        ]
+      },
+      placeholder: 'Write your newsletter content here...'
+    });
+    
+    // Initialize Quill editor for edit modal
+    let quillEdit = new Quill('#editor_edit', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+          [{ 'font': [] }],
+          [{ 'size': ['small', false, 'large', 'huge'] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'script': 'sub'}, { 'script': 'super' }],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'indent': '-1'}, { 'indent': '+1' }],
+          [{ 'align': [] }],
+          ['link', 'image', 'video'],
+          ['blockquote', 'code-block'],
+          ['clean']
+        ]
+      },
+      placeholder: 'Write your newsletter content here...'
+    });
+    
+    // Handle add form submission
+    document.getElementById('addNewsletterForm').addEventListener('submit', function(e) {
+      // Get HTML content from Quill and set it to hidden field
+      document.getElementById('content_add_hidden').value = quillAdd.root.innerHTML;
+    });
+    
+    // Handle edit form submission
+    document.getElementById('editNewsletterForm').addEventListener('submit', function(e) {
+      // Get HTML content from Quill and set it to hidden field
+      document.getElementById('content_edit_hidden').value = quillEdit.root.innerHTML;
     });
     
     function editNewsletter(newsletter) {
@@ -601,6 +660,9 @@ $stats = [
       document.getElementById('edit_status').value = newsletter.status;
       document.getElementById('edit_published_date').value = newsletter.published_date;
       document.getElementById('edit_is_featured').checked = newsletter.is_featured == 1;
+      
+      // Set content in Quill editor
+      quillEdit.root.innerHTML = newsletter.content || '';
       
       // Handle cover image
       let imageHtml = '';
@@ -616,31 +678,6 @@ $stats = [
         imageHtml = '<p class="text-muted">No cover image</p>';
       }
       document.getElementById('edit_cover_image_container').innerHTML = imageHtml;
-      
-      // Initialize TinyMCE for edit modal
-      if (tinymce.get('content_edit')) {
-        tinymce.get('content_edit').remove();
-      }
-      
-      setTimeout(() => {
-        tinymce.init({
-          selector: '#content_edit',
-          height: 400,
-          menubar: false,
-          plugins: [
-            'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-            'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-            'insertdatetime', 'media', 'table', 'help', 'wordcount'
-          ],
-          toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | bullist numlist | link image | preview code',
-          content_style: 'body { font-family: Arial, sans-serif; font-size: 14px }',
-          setup: function(editor) {
-            editor.on('init', function() {
-              editor.setContent(newsletter.content || '');
-            });
-          }
-        });
-      }, 100);
       
       var editModal = new bootstrap.Modal(document.getElementById('editNewsletterModal'));
       editModal.show();
