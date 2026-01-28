@@ -1,6 +1,4 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 require_once '../config/functions.php';
 require_role(['superadmin']);
 
@@ -47,6 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($teacher_result->num_rows > 0) {
                         $error = "This teacher is already assigned to another class at this time!";
                     } else {
+                        // Insert the timetable entry
+                        // Parameters: class_id(i), subject_id(i), teacher_id(i), day_of_week(s), period_number(i), start_time(s), end_time(s), room_number(s), academic_year_id(i)
+                        // Type string: i + i + i + s + i + s + s + s + i = "iiisisssi" (9 characters for 9 parameters)
                         $stmt = $conn->prepare("INSERT INTO timetable (class_id, subject_id, teacher_id, day_of_week, period_number, start_time, end_time, room_number, academic_year_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                         $stmt->bind_param("iiisisssi", $class_id, $subject_id, $teacher_id, $day_of_week, $period_number, $start_time, $end_time, $room_number, $current_year['id']);
                         
@@ -100,10 +101,11 @@ $timetable = $conn->query("
     ORDER BY c.class_name, FIELD(t.day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), t.period_number
 ")->fetch_all(MYSQLI_ASSOC);
 
-// Get options for dropdowns
+// Get options for dropdowns - FIXED: Get teacher.id instead of user.id
 $classes = $conn->query("SELECT * FROM classes WHERE academic_year_id = {$current_year['id']} ORDER BY grade_level, section")->fetch_all(MYSQLI_ASSOC);
 $subjects = $conn->query("SELECT * FROM subjects ORDER BY subject_name")->fetch_all(MYSQLI_ASSOC);
-$teachers = $conn->query("SELECT u.id, t.first_name, t.last_name FROM users u INNER JOIN teachers t ON u.id = t.user_id ORDER BY t.first_name")->fetch_all(MYSQLI_ASSOC);
+// IMPORTANT FIX: Get the teacher's id from teachers table, not user_id
+$teachers = $conn->query("SELECT t.id, t.first_name, t.last_name FROM teachers t ORDER BY t.first_name")->fetch_all(MYSQLI_ASSOC);
 ?>
 <!doctype html>
 <html lang="en">
