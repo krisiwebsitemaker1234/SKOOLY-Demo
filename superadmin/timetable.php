@@ -1,19 +1,6 @@
 <?php
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-try {
-    require_once '../config/functions.php';
-} catch (Exception $e) {
-    die("Error loading functions.php: " . $e->getMessage());
-}
-
-try {
-    require_role(['superadmin']);
-} catch (Exception $e) {
-    die("Error checking role: " . $e->getMessage());
-}
+require_once '../config/functions.php';
+require_role(['superadmin']);
 
 $current_year = get_current_academic_year();
 $message = '';
@@ -31,84 +18,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 empty($_POST['start_time']) || empty($_POST['end_time'])) {
                 $error = "All required fields must be filled!";
             } else {
-                try {
-                    $class_id = intval($_POST['class_id']);
-                    $subject_id = intval($_POST['subject_id']);
-                    $teacher_id = intval($_POST['teacher_id']);
-                    $day_of_week = sanitize_input($_POST['day_of_week']);
-                    $period_number = intval($_POST['period_number']);
-                    $start_time = sanitize_input($_POST['start_time']);
-                    $end_time = sanitize_input($_POST['end_time']);
-                    $room_number = isset($_POST['room_number']) ? sanitize_input($_POST['room_number']) : '';
+                $class_id = intval($_POST['class_id']);
+                $subject_id = intval($_POST['subject_id']);
+                $teacher_id = intval($_POST['teacher_id']);
+                $day_of_week = sanitize_input($_POST['day_of_week']);
+                $period_number = intval($_POST['period_number']);
+                $start_time = sanitize_input($_POST['start_time']);
+                $end_time = sanitize_input($_POST['end_time']);
+                $room_number = isset($_POST['room_number']) ? sanitize_input($_POST['room_number']) : '';
+                
+                // Check for conflicts
+                $check_stmt = $conn->prepare("SELECT id FROM timetable WHERE class_id = ? AND day_of_week = ? AND period_number = ? AND academic_year_id = ?");
+                $check_stmt->bind_param("isii", $class_id, $day_of_week, $period_number, $current_year['id']);
+                $check_stmt->execute();
+                $check_result = $check_stmt->get_result();
+                
+                if ($check_result->num_rows > 0) {
+                    $error = "This class already has a subject scheduled for this day and period!";
+                } else {
+                    // Check teacher availability
+                    $teacher_check = $conn->prepare("SELECT id FROM timetable WHERE teacher_id = ? AND day_of_week = ? AND period_number = ? AND academic_year_id = ?");
+                    $teacher_check->bind_param("isii", $teacher_id, $day_of_week, $period_number, $current_year['id']);
+                    $teacher_check->execute();
+                    $teacher_result = $teacher_check->get_result();
                     
-                    // Check for conflicts
-                    $check_stmt = $conn->prepare("SELECT id FROM timetable WHERE class_id = ? AND day_of_week = ? AND period_number = ? AND academic_year_id = ?");
-                    if (!$check_stmt) {
-                        throw new Exception("Prepare failed: " . $conn->error);
-                    }
-                    $check_stmt->bind_param("isii", $class_id, $day_of_week, $period_number, $current_year['id']);
-                    $check_stmt->execute();
-                    $check_result = $check_stmt->get_result();
-                    
-                    if ($check_result->num_rows > 0) {
-                        $error = "This class already has a subject scheduled for this day and period!";
+                    if ($teacher_result->num_rows > 0) {
+                        $error = "This teacher is already assigned to another class at this time!";
                     } else {
-                        // Check teacher availability
-                        $teacher_check = $conn->prepare("SELECT id FROM timetable WHERE teacher_id = ? AND day_of_week = ? AND period_number = ? AND academic_year_id = ?");
-                        if (!$teacher_check) {
-                            throw new Exception("Prepare failed: " . $conn->error);
-                        }
-                        $teacher_check->bind_param("isii", $teacher_id, $day_of_week, $period_number, $current_year['id']);
-                        $teacher_check->execute();
-                        $teacher_result = $teacher_check->get_result();
+                        // Insert the timetable entry
+                        // 9 parameters: class_id(i), subject_id(i), teacher_id(i), day_of_week(s), period_number(i), start_time(s), end_time(s), room_number(s), academic_year_id(i)
+                        $stmt = $conn->prepare("INSERT INTO timetable (class_id, subject_id, teacher_id, day_of_week, period_number, start_time, end_time, room_number, academic_year_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        $stmt->bind_param("iiisissi", $class_id, $subject_id, $teacher_id, $day_of_week, $period_number, $start_time, $end_time, $room_number, $current_year['id']);
                         
-                        if ($teacher_result->num_rows > 0) {
-                            $error = "This teacher is already assigned to another class at this time!";
+                        if ($stmt->execute()) {
+                            $message = "Timetable entry created successfully!";
+                            // Redirect to clear POST data
+                            header("Location: " . $_SERVER['PHP_SELF'] . "?success=1");
+                            exit();
                         } else {
-                            // Insert the timetable entry
-                            $stmt = $conn->prepare("INSERT INTO timetable (class_id, subject_id, teacher_id, day_of_week, period_number, start_time, end_time, room_number, academic_year_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                            if (!$stmt) {
-                                throw new Exception("Prepare failed: " . $conn->error);
-                            }
-                            $stmt->bind_param("iiisissi", $class_id, $subject_id, $teacher_id, $day_of_week, $period_number, $start_time, $end_time, $room_number, $current_year['id']);
-                            
-                            if ($stmt->execute()) {
-                                $message = "Timetable entry created successfully!";
-                                // Redirect to clear POST data
-                                header("Location: " . $_SERVER['PHP_SELF'] . "?success=1");
-                                exit();
-                            } else {
-                                $error = "Error creating entry: " . $stmt->error;
-                            }
-                            $stmt->close();
+                            $error = "Error creating entry: " . $stmt->error;
                         }
-                        $teacher_check->close();
+                        $stmt->close();
                     }
-                    $check_stmt->close();
-                } catch (Exception $e) {
-                    $error = "Error: " . $e->getMessage();
+                    $teacher_check->close();
                 }
+                $check_stmt->close();
             }
         } elseif ($action === 'delete') {
-            try {
-                $id = intval($_POST['id']);
-                $stmt = $conn->prepare("DELETE FROM timetable WHERE id = ?");
-                if (!$stmt) {
-                    throw new Exception("Prepare failed: " . $conn->error);
-                }
-                $stmt->bind_param("i", $id);
-                
-                if ($stmt->execute()) {
-                    $message = "Timetable entry deleted successfully!";
-                    header("Location: " . $_SERVER['PHP_SELF'] . "?deleted=1");
-                    exit();
-                } else {
-                    $error = "Error deleting entry: " . $stmt->error;
-                }
-                $stmt->close();
-            } catch (Exception $e) {
-                $error = "Error: " . $e->getMessage();
+            $id = intval($_POST['id']);
+            $stmt = $conn->prepare("DELETE FROM timetable WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            
+            if ($stmt->execute()) {
+                $message = "Timetable entry deleted successfully!";
+                header("Location: " . $_SERVER['PHP_SELF'] . "?deleted=1");
+                exit();
+            } else {
+                $error = "Error deleting entry: " . $stmt->error;
             }
+            $stmt->close();
         }
     }
 }
@@ -122,49 +90,27 @@ if (isset($_GET['deleted'])) {
 }
 
 // Get timetable entries
-try {
-    $timetable_query = "
-        SELECT t.*, c.class_name, s.subject_name, te.first_name as teacher_fname, te.last_name as teacher_lname
-        FROM timetable t
-        INNER JOIN classes c ON t.class_id = c.id
-        INNER JOIN subjects s ON t.subject_id = s.id
-        INNER JOIN teachers te ON t.teacher_id = te.id
-        WHERE t.academic_year_id = {$current_year['id']}
-        ORDER BY c.class_name, FIELD(t.day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), t.period_number
-    ";
-    $timetable_result = $conn->query($timetable_query);
-    if (!$timetable_result) {
-        throw new Exception("Query failed: " . $conn->error);
-    }
-    $timetable = $timetable_result->fetch_all(MYSQLI_ASSOC);
-} catch (Exception $e) {
-    $error = "Error loading timetable: " . $e->getMessage();
-    $timetable = [];
-}
+$timetable = $conn->query("
+    SELECT t.*, c.class_name, s.subject_name, te.first_name as teacher_fname, te.last_name as teacher_lname
+    FROM timetable t
+    INNER JOIN classes c ON t.class_id = c.id
+    INNER JOIN subjects s ON t.subject_id = s.id
+    INNER JOIN teachers te ON t.teacher_id = te.id
+    WHERE t.academic_year_id = {$current_year['id']}
+    ORDER BY c.class_name, FIELD(t.day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), t.period_number
+")->fetch_all(MYSQLI_ASSOC);
 
 // Get options for dropdowns
-try {
-    $classes_result = $conn->query("SELECT * FROM classes WHERE academic_year_id = {$current_year['id']} ORDER BY grade_level, section");
-    $classes = $classes_result ? $classes_result->fetch_all(MYSQLI_ASSOC) : [];
-    
-    $subjects_result = $conn->query("SELECT * FROM subjects ORDER BY subject_name");
-    $subjects = $subjects_result ? $subjects_result->fetch_all(MYSQLI_ASSOC) : [];
-    
-    $teachers_result = $conn->query("SELECT u.id, t.first_name, t.last_name FROM users u INNER JOIN teachers t ON u.id = t.user_id ORDER BY t.first_name");
-    $teachers = $teachers_result ? $teachers_result->fetch_all(MYSQLI_ASSOC) : [];
-} catch (Exception $e) {
-    $error = "Error loading dropdown data: " . $e->getMessage();
-    $classes = [];
-    $subjects = [];
-    $teachers = [];
-}
+$classes = $conn->query("SELECT * FROM classes WHERE academic_year_id = {$current_year['id']} ORDER BY grade_level, section")->fetch_all(MYSQLI_ASSOC);
+$subjects = $conn->query("SELECT * FROM subjects ORDER BY subject_name")->fetch_all(MYSQLI_ASSOC);
+$teachers = $conn->query("SELECT u.id, t.first_name, t.last_name FROM users u INNER JOIN teachers t ON u.id = t.user_id ORDER BY t.first_name")->fetch_all(MYSQLI_ASSOC);
 ?>
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Timetable Management - </title>
+  <title>Timetable Management - <?php echo SITE_NAME; ?></title>
   <link rel="shortcut icon" type="image/png" href="../assets/images/logos/favicon.png" />
   <link rel="stylesheet" href="../assets/css/styles.min.css" />
 </head>
@@ -172,18 +118,10 @@ try {
   <div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
     data-sidebar-position="fixed" data-header-position="fixed">
     
-    <?php 
-    if (file_exists('includes/sidebar.php')) {
-        include 'includes/sidebar.php';
-    }
-    ?>
+    <?php include 'includes/sidebar.php'; ?>
     
     <div class="body-wrapper">
-      <?php 
-      if (file_exists('includes/header.php')) {
-          include 'includes/header.php';
-      }
-      ?>
+      <?php include 'includes/header.php'; ?>
       
       <div class="body-wrapper-inner">
         <div class="container-fluid">
