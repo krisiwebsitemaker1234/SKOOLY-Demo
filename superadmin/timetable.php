@@ -45,10 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($teacher_result->num_rows > 0) {
                         $error = "This teacher is already assigned to another class at this time!";
                     } else {
-                        // Insert the timetable entry
-                        // 9 parameters: class_id(i), subject_id(i), teacher_id(i), day_of_week(s), period_number(i), start_time(s), end_time(s), room_number(s), academic_year_id(i)
                         $stmt = $conn->prepare("INSERT INTO timetable (class_id, subject_id, teacher_id, day_of_week, period_number, start_time, end_time, room_number, academic_year_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                        $stmt->bind_param("iiisissi", $class_id, $subject_id, $teacher_id, $day_of_week, $period_number, $start_time, $end_time, $room_number, $current_year['id']);
+                        $stmt->bind_param("iiisisssi", $class_id, $subject_id, $teacher_id, $day_of_week, $period_number, $start_time, $end_time, $room_number, $current_year['id']);
                         
                         if ($stmt->execute()) {
                             $message = "Timetable entry created successfully!";
